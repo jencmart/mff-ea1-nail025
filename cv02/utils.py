@@ -200,3 +200,8 @@ class Log:
         with open(self.olog_name, 'a') as f:
             for f_evals, os in zip(self.fevals, self.obj_stats):
                 f.write(f'{f_evals} {os.max} {os.mean} {os.min}\n')
+
+#  P( Amalgam | 22.5) = 0.90
+#  P( ComRes | 10 ) = 0.95
+#  P( Ceramic | 10 ) = 0.90
+#  P( Ceramic Zirconia | 5) = 0.88
