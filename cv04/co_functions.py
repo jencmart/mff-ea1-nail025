@@ -43,9 +43,18 @@ def random_xopt(n):
 
 
 def f01_sphere(x, xopt, fopt):
-    z = x - xopt
+    z = x - xopt  # x = jedinec ;; xopt == nahodne optimum
     val = np.linalg.norm(z)**2 + fopt
-    return FitObjPair(fitness = -val, objective = val - fopt)
+    # linalg ... blize nule == lepsi  10 lepsi nez 1000
+    # pricteme 500 .... 510 lepsi nez 15000
+    # odecteme 500 ... -490 lepsi nez 0
+    # ted proodime znaminka ... -510 lepsi nez -15000
+    #                           490  lepsi nez 0
+
+    # objective ... vzdy kladny, bliz k 0 == lepsi
+    # fitness ... kladna i zaporna (mela by byt - cim min tim lip)_
+    #             ale ten chlapik dava -1, tedy cim vic, tim lip ....
+    return FitObjPair(fitness=-val, objective=val - fopt)
 
 def make_f01_sphere(dim):
     xopt = random_xopt(dim)

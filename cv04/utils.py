@@ -19,10 +19,14 @@ FitObjPair = namedtuple('FitObjPair', ['fitness', 'objective'])
 #   mean - the main line in the plot
 #   upper - upper boundary of shaded area
 #   legend_name - name in the plot legend
-def plot_experiment(evals, lower, mean, upper, legend_name=''):
-    plt.plot(evals, mean, label=legend_name)
-    plt.fill_between(evals, lower, upper, alpha=0.25)
-
+def plot_experiment(ax, evals, lower, mean, upper, legend_name='', xlim=None, ylim=None):
+    ax.plot(evals, mean, label=legend_name)
+    ax.fill_between(evals, lower, upper, alpha=0.25)
+    if xlim is not None:
+        ax.set_xlim([0, xlim])
+    if ylim is not None:
+        ax.set_ylim([0, ylim])
+    # axes.set_ylim([ymin, ymax])
 # reads the run logs and computes experiment statisticts (those used for plots)
 # Arguments:
 #   prefix - directory with experiments
@@ -31,7 +35,11 @@ def plot_experiment(evals, lower, mean, upper, legend_name=''):
 #               to use for the stats
 def get_experiment_stats(prefix, exp_id, stat_type='objective'):
     data = []
-    for fn in glob.glob(f'{prefix}/{exp_id}_*.{stat_type}'):
+    xxx = glob.glob(f'{prefix}/{exp_id}_*.{stat_type}') # _
+    print(xxx)
+    # exit(1)
+    print("{} / {}".format(prefix, exp_id))
+    for fn in xxx:
         evals, stats = read_run_file(fn)
         data.append(pd.Series([s.max for s in stats], index=evals))
     data_frame = pd.DataFrame(data)
@@ -79,12 +87,14 @@ def read_run_file(filename):
 #   rename_dict - a mapping of exp_id -> legend name, can be used to rename 
 #                 entries in the plot legend
 #   stat_type - either 'objective' or 'fitness' - the type of values to plot
-def plot_experiments(prefix, exp_ids, rename_dict=None, stat_type='objective'):
+def plot_experiments(ax, prefix, exp_ids, rename_dict=None, stat_type='objective', xlim=None, ylim=None, title=None):
     if not rename_dict:
         rename_dict = dict()
     for e in exp_ids:
         evals, lower, mean, upper = get_plot_data(prefix, e, stat_type)
-        plot_experiment(evals, lower, mean, upper, rename_dict.get(e, e))
+        plot_experiment(ax, evals, lower, mean, upper, rename_dict.get(e, e), xlim=xlim, ylim=ylim)
+    if title is not None:
+        ax.set_title(title)
     plt.legend()
     plt.xlabel('Fitness evaluations')
     if stat_type == 'objective':
@@ -109,7 +119,7 @@ class Log:
     #                     of exp_id and run_id (otherwise new values are 
     #                     appended)
     def __init__(self, prefix, exp_id, run_id, write_immediately = False, 
-                 print_frequency = 1, remove_existing = True):
+                 print_frequency = 1, remove_existing = True, exper_name = None):
         self.prefix = prefix
         self.exp_id = exp_id
         if '_' in exp_id:
@@ -122,6 +132,7 @@ class Log:
         self.fit_stats = []
         self.obj_stats = []
         self.fevals = []
+        self.exper_name = exper_name
         os.makedirs(prefix, exist_ok=True)
         self.flog_name = f'{self.prefix}/{self.exp_id}_{self.run_id}.fitness'
         self.olog_name = f'{self.prefix}/{self.exp_id}_{self.run_id}.objective'
@@ -141,9 +152,10 @@ class Log:
         objs = [f.objective for f in fit_obj]
 
         fs = GenStats(min=min(fits), max=max(fits), mean=sum(fits)/len(fits))
-        os = GenStats(min=min(fit_obj, key=lambda x: x.fitness).objective,
+
+        os = GenStats(min=min(fit_obj, key=lambda x: x.fitness).objective,  # FitObjPair(fitness=-1324, objective=324)
                       mean=sum(objs)/len(objs),
-                      max=max(fit_obj, key=lambda x: x.fitness).objective)
+                      max=max(fit_obj, key=lambda x: x.fitness).objective)  # FitObjPair(fitness=-1026, objective=26)
 
         self.fit_stats.append(fs)
         self.obj_stats.append(os)
@@ -155,7 +167,12 @@ class Log:
                 f.write(f'{f_evals} {os.max} {os.mean} {os.min}\n')
         
         if self.gen_num % self.print_frequency == 0:
-            print(f'{f_evals:8} {os.min:8.2f} {os.mean:8.2f} {os.max:8.2f}')
+            # to se zda ze to je nesmysl ... ale v tom os.min  je ulozena obj fce patrici k nejmetsi fitness
+            # a protoze fitness je nastavena na *-1 ... tak min je nejhorsi...
+            if self.exper_name is None:
+                print(f'{f_evals:8} OBJ: \tWORST:{os.min:6.2f}\t AVG:{os.mean:6.2f} \t BEST:{os.max:6.2f}')
+            else:
+                print(f'{f_evals:8} {self.exper_name}-OBJ: \tWORST:{os.min:6.2f}\t AVG:{os.mean:6.2f} \t BEST:{os.max:6.2f}')
 
     def add_multi_gen(self, pop, f_evals, opt_hv):
         self.gen_num += 1
