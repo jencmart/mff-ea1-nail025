@@ -295,16 +295,21 @@ def differential_evo(population, max_gen, fitness_f, F=0.8, CR=0.9, F_decay = 1,
         for individual in population:
 
             # Mutation ....
+
+            # kombinuje 2 (not 4)
             if not from4:
-                i1 = population[np.random.randint(low=0, high=len(population))]
-                i2 = population[np.random.randint(low=0, high=len(population))]
-                i_mut = individual + F*(i1 - i2)
+                i1 = population[np.random.randint(low=0, high=len(population))] # individual 1
+                i2 = population[np.random.randint(low=0, high=len(population))] # individual 2
+                i_mut = individual + F*(i1 - i2)  # posunu ve smeru rozdilu
+
+            # kombinuji 4 dohromady...
             else:
                 a = population[np.random.randint(low=0, high=len(population))]
                 b = population[np.random.randint(low=0, high=len(population))]
                 c = population[np.random.randint(low=0, high=len(population))]
                 d = population[np.random.randint(low=0, high=len(population))]
                 i_mut = individual + F * (a+b-c-d)
+
             # Krizeni ....
             i3 = population[np.random.randint(low=0, high=len(population))]
             for i in range(i_mut.shape[1]):
@@ -411,7 +416,7 @@ def evolutionary_algorithm(population_creator, pop_size, max_gen, fitness_f, cro
     population = population_creator.init_population(pop_size)
     if special is not None:
         if special == 'differential':
-            population =  differential_evo(population, max_gen, fitness_f, F=F, CR=CR, F_decay=F_decay, CR_decay=CR_decay, from4=from4, log=log)
+            population = differential_evo(population, max_gen, fitness_f, F=F, CR=CR, F_decay=F_decay, CR_decay=CR_decay, from4=from4, log=log)
             bi = max(population, key=fitness_f)
             return population, bi
         # if special == 'lamarck' or special == 'baldwin':
@@ -580,8 +585,7 @@ def main():
                                                        experiment['lr'])  # mutation .. [  step size is the N(0,s) ]\
                 print("lamarck")
             else:
-                mutation_impl = experiment["mutation"](
-                    step_size=MUT_STEP_SIGMA)  # mutation .. [  step size is the N(0,s) ]
+                mutation_impl = experiment["mutation"]( step_size=MUT_STEP_SIGMA)  # mutation .. [  step size is the N(0,s) ]
 
             if experiment['special'] == "baldwin":
                 fit = functools.partial(fit_gradient, fitness_f=fit, lr=experiment['lr'])
