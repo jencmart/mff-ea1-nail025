@@ -9,11 +9,12 @@ if __name__ == "__main__":
 
     fit_names = ['']
 
-    algos = [ ['default', None],
+    algos = [
                ["between::weight::mutWeight::mutWholeCond", None],
+        ['default', None],
     ]
 
-    name = "winequality-white"
+    name = "iris"
     folder = name + '_results'
     figure_name = name + ".png"
 
@@ -37,9 +38,9 @@ if __name__ == "__main__":
             utils2.plot_experiments(ax, folder, [name], rename_dict=None, xlim=xlim, ylim=ylim, title="Function {}".format(funct))  # prefix, exp ids
     # axs[1, 2].set_visible(False)
     handles, lbls = axs.get_legend_handles_labels()
-    labels = ["between::weight::mutWeight::mutWholeCond", "default"]
+    labels = ["default", "between::weight::mutWeight::mutWholeCond"]
     # for l in lbls:
-        # labels.append(l[:-4])
+    #     labels.append(l[:-4])
     fig.legend(handles, labels,   bbox_to_anchor=(0.4, 0.3, 0.4, 0.3), loc='lower right')
     fig.suptitle("Default x Improved classification", fontsize=20)
     plt.savefig(figure_name)

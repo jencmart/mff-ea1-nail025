@@ -95,7 +95,7 @@ def plot_experiments(ax, prefix, exp_ids, rename_dict=None, stat_type='objective
         plot_experiment(ax, evals, lower, mean, upper, rename_dict.get(e, e), xlim=xlim, ylim=ylim)
     if title is not None:
         ax.set_title(title)
-    plt.legend()
+    # plt.legend()
     plt.xlabel('Fitness evaluations')
     if stat_type == 'objective':
         plt.ylabel('Objective value')
