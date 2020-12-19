@@ -5,13 +5,16 @@ import random
 
 import utils
 
-POP_SIZE = 100 # population size
-MAX_GEN = 500 # maximum number of generations
-CX_PROB = 0.8 # crossover probability
-MUT_PROB = 0.2 # mutation probability
-MUT_MAX_LEN = 10 # maximum lenght of the swapped part
-REPEATS = 10 # number of runs of algorithm (should be at least 10)
-INPUT = 'inputs/tsp_std.in' # the input file
+POP_SIZE = 100  # population size
+REPEATS = 10  # number of runs of algorithm (should be at least 10)
+MAX_GEN = 5000  # maximum number of generations (premature end, so fine ...)
+
+
+CX_PROB = 0.8 # crossover probability -- ok
+MUT_PROB = 0.2 # mutation probability -- ok
+MUT_MAX_LEN = 10 # maximum lenght of the swapped part -- not used ...
+
+INPUT = 'inputs/tsp_std.in'  # the input file
 OUT_DIR = 'tsp' # output directory for logs
 EXP_ID = 'default' # the ID of this experiment (used to create log names)
 
@@ -61,9 +64,48 @@ def create_ind(ind_len):
     random.shuffle(ind)
     return ind
 
+city_cache = None
+key_val_cache = {}
+
+def distances_from(idx_city, cities):
+    global city_cache
+    global key_val_cache
+
+    if city_cache is None:
+        city_cache = np.zeros([len(cities), len(cities)])
+        for i, i_city in enumerate(cities):
+            for j, j_city in enumerate(cities):
+                if i != j:
+                    city_cache[i, j] = distance(i_city, j_city)
+                else:
+                    city_cache[i, j] = np.infty
+        for key in range(city_cache.shape[0]):
+            key_val_cache[key] = np.argsort(city_cache[key])
+    return key_val_cache[idx_city]
+
+aaa = -1
+def create_ind_kostra(ind_len, cities):
+    global aaa
+    aaa+=1
+    first = aaa if aaa < ind_len else np.random.randint(0, ind_len)
+    # first = random.randrange(0, ind_len)
+
+    result = [first]
+    while True:
+        if len(result) == ind_len:
+            break
+        closest_cities = distances_from(result[-1], cities)
+        for i in closest_cities:
+            if i not in result:
+                result.append(i)
+                break
+    return result
+
+
 # creates the population using the create individual function
 def create_pop(pop_size, create_individual):
     return [create_individual() for _ in range(pop_size)]
+
 
 # the tournament selection
 def tournament_selection(pop, fits, k):
@@ -77,6 +119,7 @@ def tournament_selection(pop, fits, k):
             selected.append(pop[p2][:])
 
     return selected
+
 
 # implements the order crossover of two individuals
 def order_cross(p1, p2):
@@ -98,6 +141,135 @@ def order_cross(p1, p2):
 
     return o1, o2
 
+default = False
+def edge_recombination(p1, p2):
+    adj = {}
+
+    def add_to_dic(dic, key, val):
+        if key in dic:
+            dic[key].append(val)
+        else:
+            dic[key] = [val]
+
+    def add_p_to_dic(dic, p):
+        for idx, i in enumerate(p):
+            if 0<idx and idx+1 < len(p):
+                add_to_dic(dic, i, p[idx - 1])
+                add_to_dic(dic, i, p[idx + 1])
+            elif idx == 0:
+                add_to_dic(dic, i, p[-1])
+                add_to_dic(dic, i, p[idx + 1])
+            elif idx +1 == len(p):
+                add_to_dic(dic, i, p[idx - 1])
+                add_to_dic(dic, i, p[0])
+            else:
+                raise BaseException("not possible")
+
+    # Step 1
+    add_p_to_dic(adj, p1)
+    add_p_to_dic(adj, p2)
+    global default
+    default = False
+
+    # Step 2
+    def select_min_key(dic, curr_k, ignored):
+        global default
+        min_cnt = None
+        for adj_k in dic[curr_k]:
+            if adj_k in ignored:  # skip already used
+                continue
+            v = set(dic[adj_k])   # we count used ...
+
+            # use the min, but not zero ! :-D
+            tmp = len(set(dic[adj_k]) - set(ignored))
+            if min_cnt is None or 0 < tmp <= min_cnt:
+                min_cnt = tmp
+
+        if min_cnt is not None:
+            adj_keys = []
+            for adj_k in dic[curr_k]:
+                if adj_k in ignored:  # skip already used
+                    continue
+                tmp = len(set(dic[adj_k]) - set(ignored))
+                if tmp == min_cnt:
+                    adj_keys.append(adj_k)
+
+            # Select randomly (prefer edges common to both ...)
+            # print(adj_keys)
+            probs = [adj_keys.count(x)/len(adj_keys) for x in set(adj_keys)]
+            result = np.random.choice(list(set(adj_keys)), p=probs)
+            if result not in ignored:
+                return result
+
+            # or at least possibly...
+            for k in adj_keys:
+                if k not in ignored:
+                    return k
+        # else return some random...
+        else:
+            # if default == False:
+            #     print("default... {}".format(len(p1)- len(ignored)))
+            #     default = True
+            not_used = list(set(list(range(len(p1)))) - set(ignored))
+            return np.random.choice(not_used)
+
+
+    def fill_recursively(adj, curr_key, infant):
+        if len(infant) == len(p1):
+            return
+
+        # select
+        next_key = select_min_key(adj, curr_k=curr_key, ignored=infant)
+        if next_key is not None:
+            infant.append(next_key)
+            fill_recursively(adj, next_key, infant)
+        return
+    # run it ...
+    result = []
+    first_k = np.random.choice(list(range(len(p1))))
+    fill_recursively(adj, first_k, result)
+    return result
+
+
+def k_opt(p, locations):
+    def get_cities(p, idx):
+        c1 = p[idx]
+        c2 = p[idx+1] if idx+1 < len(p) else p[0]
+        return locations[c1], locations[c2]
+    reduct = 0
+    best_idx_b, best_idx_c = None, None
+    # pre = fitness(p, locations)
+
+    for i in range(len(p)):
+        for j in range(i+2, len(p)):
+            # A---B>>>>>>>>>>>>>C--D
+            a, b = get_cities(p, i)
+            c, d = get_cities(p, j)
+            # A---C<<<<<<<<<<<<B---D
+            a_b__c_d = distance(a, b) + distance(c, d)
+            a_c__b_d = distance(a, c) + distance(b, d)
+
+            # update ...
+            if a_b__c_d - a_c__b_d > reduct:
+                reduct = a_b__c_d - a_c__b_d
+                best_idx_b, best_idx_c = i+1, j
+
+    if best_idx_b is not None:
+        # reverse ...
+        # i+1 .. nutne max pred predposledni...
+        begin = p[0:best_idx_b]  # nevcetne b
+
+        # j+1 muze byt len.... v takovem pripade je end prazdny
+        end = p[best_idx_c+1:] if best_idx_c+1 < len(p) else []
+        reverse_part = p[best_idx_b: best_idx_c+1]  # python je s tim ok a da to i kdyz c+1 pretece..
+        result = begin + [x for x in reversed(reverse_part)] + end
+        # assert len(result) == len(p) == len(set(result))
+        # after = fitness(result, locations)
+        # assert abs(pre.objective - reduct - after.objective) < 1
+        return result
+    return p
+
+
 # implements the swapping mutation of one individual
 def swap_mutate(p, max_len):
     source = random.randrange(1, len(p) - 1)
@@ -105,12 +277,12 @@ def swap_mutate(p, max_len):
     lenght = random.randrange(1, min(max_len, len(p) - source))
 
     o = p[:]
-    move = p[source:source+lenght]
-    o[source:source + lenght] = []
+    move = p[source:source+lenght]  # up to 10 numbers...
+    o[source:source + lenght] = []  # remove ?
     if source < dest:
-        dest = dest - lenght # we removed `lenght` items - need to recompute dest
+        dest = dest - lenght  # we removed `lenght` items - need to recompute dest
     
-    o[dest:dest] = move
+    o[dest:dest] = move  # insert ..
     
     return o
 
@@ -127,11 +299,26 @@ def crossover(pop, cross, cx_prob):
     off = []
     for p1, p2 in zip(pop[0::2], pop[1::2]):
         if random.random() < cx_prob:
-            o1, o2 = cross(p1, p2)
+            cross_res = cross(p1, p2)
+            if isinstance(cross_res, tuple):
+                (o1, o2) = cross_res
+                off.append(o1)
+                off.append(o2)
+            else:
+                off.append(cross_res)
         else:
             o1, o2 = p1[:], p2[:]
-        off.append(o1)
-        off.append(o2)
+            off.append(o1)
+            off.append(o2)
+
+    # if we had crossover returning only single child, we need to fill it ...
+    idxs = list(range(len(pop)))
+    while len(off) < len(pop):
+
+        p1 = pop[np.random.choice(idxs)]
+        p2 = pop[np.random.choice(idxs)]
+        cross_res = cross(p1, p2)
+        off.append(cross_res)
     return off
 
 # applies the mutate function (implementing the mutation of a single individual)
@@ -155,11 +342,21 @@ def mutation(pop, mutate, mut_prob):
 #   log       - a utils.Log structure to log the evolution run
 def evolutionary_algorithm(pop, max_gen, fitness, operators, mate_sel, *, map_fn=map, log=None):
     evals = 0
+    same_for = 0
+    bes_res = 999999
     for G in range(max_gen):
         fits_objs = list(map_fn(fitness, pop))
         evals += len(pop)
         if log:
-            log.add_gen(fits_objs, evals)
+            res = log.add_gen(fits_objs, evals)
+            if res < bes_res:
+                bes_res = res
+                same_for = 0
+            else:
+                same_for += 1
+            if same_for > 50:
+                print("fast break: {}".format(bes_res))
+                break
         fits = [f.fitness for f in fits_objs]
         objs = [f.objective for f in fits_objs]
 
@@ -176,11 +373,14 @@ if __name__ == '__main__':
 
     # use `functool.partial` to create fix some arguments of the functions 
     # and create functions with required signatures
-    cr_ind = functools.partial(create_ind, ind_len=len(locations))
+    cr_ind = functools.partial(create_ind_kostra, ind_len=len(locations), cities=locations)
     fit = functools.partial(fitness, cities=locations)
-    xover = functools.partial(crossover, cross=order_cross, cx_prob=CX_PROB)
-    mut = functools.partial(mutation, mut_prob=MUT_PROB, 
-                            mutate=functools.partial(swap_mutate, max_len=MUT_MAX_LEN))
+
+    # todo -- change
+    xover = functools.partial(crossover, cross=edge_recombination, cx_prob=CX_PROB)
+
+    # todo -- change ( note that i use max_len also for k_opt, but there i pass locations...  max_len=MUT_MAX_LEN
+    mut = functools.partial(mutation, mut_prob=MUT_PROB, mutate=functools.partial(k_opt, locations=locations))
 
     # we can use multiprocessing to evaluate fitness in parallel
     import multiprocessing
@@ -192,6 +392,7 @@ if __name__ == '__main__':
     # last generations
     best_inds = []
     for run in range(REPEATS):
+        print("run: {}".format(run))
         # initialize the log structure
         log = utils.Log(OUT_DIR, EXP_ID, run, 
                         write_immediately=True, print_frequency=5)
@@ -240,4 +441,4 @@ if __name__ == '__main__':
     #                        rename_dict={'default': 'Default setting'})
     # the rename_dict can be used to make reasonable entries in the legend - 
     # experiments that are not in the dict use their id (in this case, the 
-    # legend entries would be 'Default settings' and 'tuned') 
+    # legend entries would be 'Default settings' and 'tuned')
