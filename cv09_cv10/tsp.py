@@ -6,13 +6,13 @@ import random
 import utils
 
 POP_SIZE = 100  # population size
-REPEATS = 10  # number of runs of algorithm (should be at least 10)
+REPEATS = 1000  # number of runs of algorithm (should be at least 10)
 MAX_GEN = 5000  # maximum number of generations (premature end, so fine ...)
 
 
-CX_PROB = 0.8 # crossover probability -- ok
-MUT_PROB = 0.2 # mutation probability -- ok
-MUT_MAX_LEN = 10 # maximum lenght of the swapped part -- not used ...
+CX_PROB = 0.8  # crossover probability -- ok
+MUT_PROB = 0.2  # mutation probability -- ok
+MUT_MAX_LEN = 10  # maximum lenght of the swapped part -- not used ...
 
 INPUT = 'inputs/tsp_std.in'  # the input file
 OUT_DIR = 'tsp' # output directory for logs
@@ -366,6 +366,7 @@ def evolutionary_algorithm(pop, max_gen, fitness, operators, mate_sel, *, map_fn
         pop = offspring[:-1] + [max(list(zip(fits, pop)), key = lambda x: x[0])[1]]
 
     return pop
+
 
 if __name__ == '__main__':
     # read the locations from input
