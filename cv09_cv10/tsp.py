@@ -1,4 +1,5 @@
 import functools
+import itertools
 import math
 import numpy as np
 import random
@@ -18,6 +19,82 @@ INPUT = 'inputs/tsp_std.in'  # the input file
 OUT_DIR = 'tsp' # output directory for logs
 EXP_ID = 'default' # the ID of this experiment (used to create log names)
 
+k=2
+
+
+def generate_combinations(individual, node1, node2, node3, locations__):
+
+    # pre = fitness(individual, locations__).objective
+    """
+    This method generate 8 possible combinations from a list of cities
+    :param individual: List of cities
+    :param node1: [a, b]
+    :param node2: [c, d]
+    :param node3: [e, f]
+    :return: Best combination i.e. list of cities, tour cost
+    """
+    """Combo 1: Same as the original node : Everything till Node 1 -> Node 1 to Node2 -> Node2 to Node 3 -> Node3 
+    to Everything 
+    """
+    combo_1 = individual[:node1[0] + 1] + individual[node1[1]:node2[0]+1]     + individual[node2[1]: node3[0]+1]     + individual[node3[1]:]
+    combo_2 = individual[:node1[0] + 1] + individual[node1[1]:node2[0]+1]     + individual[node3[0]: node2[1]-1: -1] + individual[node3[1]:]
+    combo_3 = individual[:node1[0] + 1] + individual[node2[0]:node1[1]-1: -1] + individual[node2[1]: node3[0]+1]     + individual[node3[1]:]
+    combo_4 = individual[:node1[0] + 1] + individual[node2[0]:node1[1]-1: -1] + individual[node3[0]: node2[1]-1: -1] + individual[node3[1]:]
+    combo_5 = individual[:node1[0] + 1] + individual[node2[1]:node3[0]+1]     + individual[node1[1]:node2[0]+1]      + individual[node3[1]:]
+    combo_6 = individual[:node1[0] + 1] + individual[node2[1]:node3[0]+1]     + individual[node2[0]:node1[1]-1: -1]  + individual[node3[1]:]
+    combo_7 = individual[:node1[0] + 1] + individual[node3[0]:node2[1]-1: -1] + individual[node1[1]:node2[0]+1]      + individual[node3[1]:]
+    combo_8 = individual[:node1[0] + 1] + individual[node3[0]:node2[1]-1: -1] + individual[node2[0]:node1[1]-1: -1]  + individual[node3[1]:]
+
+    combinations_array = [combo_1, combo_2, combo_3, combo_4, combo_5, combo_6, combo_7, combo_8]
+    distances_array = list(map(lambda x: fitness(x, locations__).objective, combinations_array))
+    min_distance = int(np.argmin(distances_array))
+    return combinations_array[min_distance], distances_array[min_distance]
+    # self.random_solution = np.array(combinations_array[min_distance])
+    # self.total_cost = distances_array[min_distance]
+fff = 1
+def k_opt_3(route, locations):
+    global fff
+    if fff == 1:
+        print("\tk opt 3")
+        fff+=1
+    """
+    3 OPT Local search
+    Generates all possible valid combinations.
+    Runs a for loop for each combination obtained above and generates 7 different combinations
+    possible after 3 OPT move. Selects the one with minimum tour cost
+    :param route: list of cities
+    :return: updated list of cities , tour_cost
+    """
+    all_combinations = list(itertools.combinations(range(len(route)), 3))
+    """This generates all possible sorted routes and hence eliminating the need of for loop and then sorting it 
+    and hence avoiding duplicates 
+    """
+    # Select any random city including first and last city
+    random_city = np.random.randint(low=0, high=len(route))
+    # Keep only valid combinations, i.e combinations containing the random selected city
+    all_combinations = list(filter(lambda x: random_city in x, all_combinations))
+    # Remove consecutive numbers to avoid overlaps and invalid cities
+    # all_combinations = list(filter(lambda x: x[1] != x[0] + 1 and x[2] != x[1] + 1, all_combinations))
+
+    for idx, item in enumerate(all_combinations):
+        """
+        Run for every combination generated above.
+        a,c,e = x,y,z  # Generated in the combination
+        d,e,f = x+1, y+1, z+1  # To form the edge
+        """
+        # print('Iteration count is {} and item a, c, e is {}' .format(idx, item))
+        a1, c1, e1 = item
+        b1, d1, f1 = a1 + 1, c1 + 1, e1 + 1
+
+        """The above generates the edge. The edge is sent to generate 7 possible combinations and the best one is 
+        selected and applied to the global solution
+        """
+        route, _ = generate_combinations(route, [a1, b1], [c1, d1], [e1, f1], locations)
+
+    # distance = calc_tour_cost(route)
+    return route #, distance
+
+
 # reads the input set of values of objects
 def read_locations(filename):
     locations = []
@@ -33,17 +110,17 @@ def distance(loc1, loc2):
     # convert decimal degrees to radians 
     lon1, lat1, lon2, lat2 = map(math.radians, [loc1[1], loc1[0], loc2[1], loc2[0]])
     # haversine formula 
-    dlon = lon2 - lon1 
-    dlat = lat2 - lat1 
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
     a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-    c = 2 * math.asin(math.sqrt(a)) 
+    c = 2 * math.asin(math.sqrt(a))
     # Radius of earth in kilometers is 6371
     km = 6371.01 * c
     return km
 
 # the fitness function
 def fitness(ind, cities):
-    
+
     # quickly check that ind is a permutation
     num_cities = len(cities)
     assert len(ind) == num_cities
@@ -55,7 +132,7 @@ def fitness(ind, cities):
 
     dist += distance(cities[ind[-1]], cities[ind[0]])
 
-    return utils.FitObjPair(fitness=-dist, 
+    return utils.FitObjPair(fitness=-dist,
                             objective=dist)
 
 # creates the individual (random permutation)
@@ -85,6 +162,10 @@ def distances_from(idx_city, cities):
 
 aaa = -1
 def create_ind_kostra(ind_len, cities):
+
+    if np.random.random() < 0.5:
+        return create_ind(ind_len)
+
     global aaa
     aaa+=1
     first = aaa if aaa < ind_len else np.random.randint(0, ind_len)
@@ -232,6 +313,16 @@ def edge_recombination(p1, p2):
 
 
 def k_opt(p, locations):
+    global k
+    if k == 2:
+        return k_opt_2(p, locations)
+    elif k==3:
+        return k_opt_3(p, locations)
+    else:
+        raise NotImplementedError("only k2 and k3 supported")
+
+
+def k_opt_2(p, locations):
     def get_cities(p, idx):
         c1 = p[idx]
         c2 = p[idx+1] if idx+1 < len(p) else p[0]
@@ -281,12 +372,12 @@ def swap_mutate(p, max_len):
     o[source:source + lenght] = []  # remove ?
     if source < dest:
         dest = dest - lenght  # we removed `lenght` items - need to recompute dest
-    
+
     o[dest:dest] = move  # insert ..
-    
+
     return o
 
-# applies a list of genetic operators (functions with 1 argument - population) 
+# applies a list of genetic operators (functions with 1 argument - population)
 # to the population
 def mate(pop, operators):
     for o in operators:
@@ -341,6 +432,7 @@ def mutation(pop, mutate, mut_prob):
 #               population (default `map`)
 #   log       - a utils.Log structure to log the evolution run
 def evolutionary_algorithm(pop, max_gen, fitness, operators, mate_sel, *, map_fn=map, log=None):
+    global k
     evals = 0
     same_for = 0
     bes_res = 999999
@@ -349,14 +441,14 @@ def evolutionary_algorithm(pop, max_gen, fitness, operators, mate_sel, *, map_fn
         evals += len(pop)
         if log:
             res = log.add_gen(fits_objs, evals)
-            if res < bes_res:
-                bes_res = res
-                same_for = 0
-            else:
-                same_for += 1
-            if same_for > 50:
-                print("fast break: {}".format(bes_res))
+
+            if abs(res[0] - res[1]) < 1 and k == 2:
+                k = 3
+
+            elif abs(res[0] - res[1]) < 1 and k == 3:
+                print("fast break: {}".format(res[2]))
                 break
+
         fits = [f.fitness for f in fits_objs]
         objs = [f.objective for f in fits_objs]
 
@@ -395,7 +487,7 @@ if __name__ == '__main__':
     for run in range(REPEATS):
         print("run: {}".format(run))
         # initialize the log structure
-        log = utils.Log(OUT_DIR, EXP_ID, run, 
+        log = utils.Log(OUT_DIR, EXP_ID, run,
                         write_immediately=True, print_frequency=5)
         # create population
         pop = create_pop(POP_SIZE, cr_ind)
@@ -416,7 +508,7 @@ if __name__ == '__main__':
             bi_kml = [f'{locations[i][1]},{locations[i][0]},5000' for i in bi]
             bi_kml.append(f'{locations[bi[0]][1]},{locations[bi[0]][0]},5000')
             f.write(best_template.format(individual='\n'.join(bi_kml)))
-        
+
         # if we used write_immediately = False, we would need to save the 
         # files now
         # log.write_files()

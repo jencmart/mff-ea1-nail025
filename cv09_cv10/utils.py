@@ -157,7 +157,7 @@ class Log:
         if self.gen_num % self.print_frequency == 0:
             print(f'{f_evals:8} {os.min:8.2f} {os.mean:8.2f} {os.max:8.2f}')
             pass
-        return os.max
+        return os.min, os.mean, os.max
 
     def add_multi_gen(self, pop, f_evals, opt_hv):
         self.gen_num += 1
