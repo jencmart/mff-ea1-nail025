@@ -7,8 +7,8 @@ import random
 import utils
 
 POP_SIZE = 100  # population size
-REPEATS = 1000  # number of runs of algorithm (should be at least 10)
-MAX_GEN = 5000  # maximum number of generations (premature end, so fine ...)
+REPEATS = 10  # number of runs of algorithm (should be at least 10)
+MAX_GEN = 100  # maximum number of generations (premature end, so fine ...)
 
 
 CX_PROB = 0.8  # crossover probability -- ok
@@ -17,7 +17,7 @@ MUT_MAX_LEN = 10  # maximum lenght of the swapped part -- not used ...
 
 INPUT = 'inputs/tsp_std.in'  # the input file
 OUT_DIR = 'tsp' # output directory for logs
-EXP_ID = 'default' # the ID of this experiment (used to create log names)
+EXP_ID = 'nn::er::2opt'  # the ID of this experiment (used to create log names)
 
 k=2
 
@@ -443,12 +443,12 @@ def evolutionary_algorithm(pop, max_gen, fitness, operators, mate_sel, *, map_fn
         if log:
             res = log.add_gen(fits_objs, evals)
 
-            if abs(res[0] - res[1]) < 1 and k == 2:
-                k = 3
-
-            elif abs(res[0] - res[1]) < 1 and k == 3:
-                print("fast break: {}".format(res[2]))
-                break
+            # if abs(res[0] - res[1]) < 1 and k == 2:
+            #     k = 3
+            #
+            # elif abs(res[0] - res[1]) < 1 and k == 3:
+            #     print("fast break: {}".format(res[2]))
+            #     break
 
         fits = [f.fitness for f in fits_objs]
         objs = [f.objective for f in fits_objs]

@@ -80,7 +80,7 @@ def TSPRec(adj, curr_bound, curr_weight,
         if (adj[curr_path[level - 1]][i] != 0 and
                 visited[i] == False):
             temp = curr_bound
-            curr_weight += adj[curr_path[level - 1]][i]
+              += adj[curr_path[level - 1]][i]
 
             # different computation of curr_bound
             # for level 2 from the other levels
